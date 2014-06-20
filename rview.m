@@ -19,7 +19,7 @@ classdef rview < handle
     %   The interpolation button will toggle image interpolation on/off
     %
     %   See also:  RVIEWER
-    %
+    
     %  Copyright 2014 Tessive LLC
     %  Contact: Tony Davis, tony@tessive.com
     %  www.tessive.com
