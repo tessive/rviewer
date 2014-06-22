@@ -221,10 +221,9 @@ classdef rviewer < handle
             %
             %  See also: rviewer
             
-            s = get(this.hfig, 'Position').*get(this.maxes, 'Position');
-            % size of the output window on the screen, in pixels
-            arows = ceil(s(4));
-            acols = ceil(s(3));
+            
+            [arows, acols] = getactualpixels(this);
+            
             
             % Size of the input image
             irows = size(this.imagedata, 1);
@@ -250,15 +249,9 @@ classdef rviewer < handle
             %  See Also: rviewer
             
             currentstacklevel  = find(get(get(this.maxes, 'Parent'), 'Children') == this.maxes);
-            axes(this.maxes);
-            origunits = get(this.hfig, 'Units');
-            set(this.hfig, 'Units', 'pixels');
-            s = get(this.hfig, 'Position').*get(this.maxes, 'Position');
-            set(this.hfig, 'Units', origunits);
-            % size of the output window on the screen, in pixels
-            arows = ceil(s(4));
-            acols = ceil(s(3));
 
+            [arows, acols] = getactualpixels(this);
+            
             % Size of the input image
             irows = size(this.imagedata, 1);
             icols = size(this.imagedata, 2);
@@ -397,6 +390,26 @@ classdef rviewer < handle
             
         end
         
+        function [arows, acols] = getactualpixels(this)
+           % Returns the size of the axes in actual pixels.
+            origaxesunits = get(this.maxes, 'Units');
+            set(this.maxes, 'Units', 'pixels');
+            s = get(this.maxes, 'Position');
+            set(this.maxes, 'Units', origaxesunits);
+            % size of the output window on the screen, in pixels
+            arows = ceil(s(4));
+            acols = ceil(s(3));
+            
+            % This is a quick sanity check: if the axes are larger than the
+            % figure, use the figure size.
+            origfigunits = get(this.maxes, 'Units');
+            set(this.hfig, 'Units', 'pixels');
+            s = get(this.hfig, 'Position');
+            set(this.hfig, 'Units', origfigunits);
+            arows = min(arows, ceil(s(4)));
+            acols = min(acols, ceil(s(3)));
+        end
+        
     end
     
     methods (Static = true, Access = private)
@@ -495,7 +508,7 @@ classdef rviewer < handle
                         for i=1:numel(CBLIST)
                            cbinstance = CBLIST{i};
                            if double(cbinstance.hfig) == double(rviewerinstance.hfig)
-                              remainingrviewers = remiainingrviewers+1;
+                              remainingrviewers = remainingrviewers+1;
                            end
                         end
                         
@@ -561,7 +574,7 @@ classdef rviewer < handle
             % CBLIST is a cell array of registered rviewer instances
             if ~ischar(varargin{1})  % This is the normal callback from the figure
                 hObject = varargin{1};
-                
+                origcallback = function_handle.empty;
                  % Get the original callback
                 for i=1:numel(ORIGCALLBACKLIST)
                    if ORIGCALLBACKLIST(i).fighandlenumber == double(hObject)
@@ -624,7 +637,7 @@ classdef rviewer < handle
                         for i=1:numel(CBLIST)
                            cbinstance = CBLIST{i};
                            if double(cbinstance.hfig) == double(rviewerinstance.hfig)
-                              remainingrviewers = remiainingrviewers+1;
+                              remainingrviewers = remainingrviewers+1;
                            end
                         end
                         
