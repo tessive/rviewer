@@ -1,5 +1,5 @@
 classdef rview < handle
-    %RVIEW Class for viewing a single image or comparing two images
+    %RVIEW Application for viewing a single image or comparing images
     %   RVIEW is intended as a demonstration of the RVIEWER class for
     %   interactive image resizing with interpolation.
     %  

@@ -1,5 +1,5 @@
 classdef rviewsc < rview
-    %RVIEWSC Class for viewing a single image or comparing multiple images
+    %RVIEWSC Application for scaling and viewing a monochrome image or comparing images
     %   RVIEWSC is derived from RVIEW, and has the same functionality, but
     %   will scale the intensity of the images (similar to imagesc).
     %

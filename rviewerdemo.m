@@ -1,5 +1,5 @@
 function varargout = rviewerdemo(varargin)
-% RVIEWERDEMO MATLAB code for rviewerdemo.fig
+%RVIEWERDEMO A GUIDE generated figure and code using RViewer 
 %      RVIEWERDEMO, by itself, creates a new RVIEWERDEMO or raises the existing
 %      singleton*.
 %

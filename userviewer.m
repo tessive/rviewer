@@ -1,4 +1,4 @@
-%% How to use RVIEWER 
+%% A cell-mode script showing how to use RViewer 
 % Created by Tessive LLC
 % Contact:  Tony Davis
 %           tony@tessive.com
