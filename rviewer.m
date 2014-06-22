@@ -47,6 +47,7 @@ classdef rviewer < handle
         imagecenter % The center location for the image
         mag = 1        % The image magnification level (1 = fit to axes)
         interpolate = true % True if interpolation should be used, false otherwise
+        zoomonclick = true % True if the rviewer should zoom in, out, or center to buttondown events
         totalscale  % The total image scaling at the image level 
         
         restack     % Optional value if Z-level restacking is desired. Defaults off.  When active, can cause the figure window to flicker on redraw.
@@ -147,6 +148,7 @@ classdef rviewer < handle
             %
             %  See also: rviewer
             stop(this.resizetimer);
+            set(this.himage, 'ButtonDownFcn', []);
             rviewer.RegisterResizeCallback('Unregister', this);
             rviewer.RegisterDeleteCallback('Unregister', this);
             delete(this.resizetimer);
@@ -249,7 +251,10 @@ classdef rviewer < handle
             
             currentstacklevel  = find(get(get(this.maxes, 'Parent'), 'Children') == this.maxes);
             axes(this.maxes);
+            origunits = get(this.hfig, 'Units');
+            set(this.hfig, 'Units', 'pixels');
             s = get(this.hfig, 'Position').*get(this.maxes, 'Position');
+            set(this.hfig, 'Units', origunits);
             % size of the output window on the screen, in pixels
             arows = ceil(s(4));
             acols = ceil(s(3));
@@ -341,37 +346,38 @@ classdef rviewer < handle
             % Right click to recenter without zoom change
             % Double-click to reset image to full size
             
-            
-            cp = get(this.maxes, 'CurrentPoint');
-            arows = size(get(this.himage, 'CData'), 1);  % total pixel rows in the display axes
-            acols = size(get(this.himage, 'CData'), 2);  % total pixel columns in the display axes
-            crow = cp(1,2);  % Which pixel row was clicked in the axes
-            ccol = cp(1,1);  % Which pixel column was clicked in the axes
-            
-            
-            this.imagecenter(1) = this.imagecenter(1) + (crow - arows/2)/this.totalscale;
-            this.imagecenter(2) = this.imagecenter(2) + (ccol - acols/2)/this.totalscale;
-            
-            switch get(get(this.maxes, 'Parent'), 'SelectionType')
-                case 'normal'
-                    this.mag = this.mag * 1.5;
-                case 'extend'
-                    this.mag = this.mag / 1.5;
-                case 'alt'
-                    % just reposition, no magnification change        
-                case 'open'
-                    this.mag = 1;
-                    this.imagecenter(1) = size(this.imagedata,1)./2;
-                    this.imagecenter(2) = size(this.imagedata,2)./2;
-                otherwise
+            if this.zoomonclick
+               cp = get(this.maxes, 'CurrentPoint');
+               arows = size(get(this.himage, 'CData'), 1);  % total pixel rows in the display axes
+               acols = size(get(this.himage, 'CData'), 2);  % total pixel columns in the display axes
+               crow = cp(1,2);  % Which pixel row was clicked in the axes
+               ccol = cp(1,1);  % Which pixel column was clicked in the axes
+               
+               
+               this.imagecenter(1) = this.imagecenter(1) + (crow - arows/2)/this.totalscale;
+               this.imagecenter(2) = this.imagecenter(2) + (ccol - acols/2)/this.totalscale;
+               
+               switch get(get(this.maxes, 'Parent'), 'SelectionType')
+                  case 'normal'
+                     this.mag = this.mag * 1.5;
+                  case 'extend'
+                     this.mag = this.mag / 1.5;
+                  case 'alt'
+                     % just reposition, no magnification change
+                  case 'open'
+                     this.mag = 1;
+                     this.imagecenter(1) = size(this.imagedata,1)./2;
+                     this.imagecenter(2) = size(this.imagedata,2)./2;
+                  otherwise
+               end
+               
+               this.mag = max(this.mag, 1);
+               this.mag = min(this.mag, 30);
+               this = redrawimage(this);
+               
+               % Update any synchronized viewers
+               this = updatesync(this);
             end
-            
-            this.mag = max(this.mag, 1);
-            this.mag = min(this.mag, 30);
-            this = redrawimage(this);
-            
-            % Update any synchronized viewers
-            this = updatesync(this);
             
             % Call any registered callback
             if ~isempty(this.ButtonDownFcn)
@@ -417,25 +423,64 @@ classdef rviewer < handle
         %
         function RegisterResizeCallback(varargin)
             persistent CBLIST;
+            persistent ORIGCALLBACKLIST;
             % CBLIST is a cell array of registered rviewer instances
+            % ORIGCALLBACKLIST is an array of structures for callbacks
+            % the structures have elements of fighandlenumber and callback
+            
+            if isempty(ORIGCALLBACKLIST)
+               ORIGCALLBACKLIST = struct('fighandlenumber', [], 'callback', function_handle.empty);
+            end
+            
             if ~ischar(varargin{1})  % This is the normal callback from the figure
-                hObject = varargin{1};
+               hObject = varargin{1};
+               
+               % Call the original callback if present (first)
+               for i=1:numel(ORIGCALLBACKLIST)
+                  if ORIGCALLBACKLIST(i).fighandlenumber == double(hObject)
+                     if ~isempty(ORIGCALLBACKLIST(i).callback)
+                        feval(ORIGCALLBACKLIST(i).callback, varargin{:});
+                     end
+                  end
+               end
+               
+               
+               i=1;
+               while i <= numel(CBLIST)
+                  rviewerinstance = CBLIST{i};
+                  if (rviewerinstance.hfig == hObject) % If the figure number matches
+                     resize(rviewerinstance);
+                  end
+                  i = i+1;
+               end
+
+
                 
-                i=1;
-                while i <= numel(CBLIST)
-                    rviewerinstance = CBLIST{i};
-                    if (rviewerinstance.hfig == hObject) % If the figure number matches
-                        resize(rviewerinstance);
-                    end
-                    i = i+1;
-                end
             else
                 action =varargin{1};
                 rviewerinstance = varargin{2};
                 switch action
                     case 'Register'
                         rviewer.RegisterResizeCallback('Unregister', rviewerinstance);  %First remove any other instances of this same object
+                        % If there are no registered Rviewer instances,
+                        % then we need to store the ResizeFcn for the
+                        % figure.
+
                         CBLIST{end+1} = rviewerinstance;
+                        
+                        % If the current callback for the figure isn't
+                        % empty, and it isn't a copy of this callback, then
+                        % we need to store the original callback.
+                        currentcallback = get(rviewerinstance.hfig, 'ResizeFcn');
+                        if ~isempty(currentcallback)
+                           if ~strcmpi(func2str(currentcallback), 'rviewer.RegisterResizeCallback')
+                              
+                              origstruct.fighandlenumber = double(rviewerinstance.hfig);
+                              origstruct.callback = currentcallback;
+                              ORIGCALLBACKLIST(end+1) = origstruct;
+                           end
+                        end
+                        
                         set(rviewerinstance.hfig, 'ResizeFcn',  @rviewer.RegisterResizeCallback); %Register this static method with the figure.
                     case 'Unregister'
                         for i = numel(CBLIST): -1: 1
@@ -443,6 +488,31 @@ classdef rviewer < handle
                                 CBLIST(i) = [];
                             end
                         end
+                        
+                        % If that removed all the Rviewer instances related to this figure, then
+                        % replace the original callback.
+                        remainingrviewers = 0;
+                        for i=1:numel(CBLIST)
+                           cbinstance = CBLIST{i};
+                           if double(cbinstance.hfig) == double(rviewerinstance.hfig)
+                              remainingrviewers = remiainingrviewers+1;
+                           end
+                        end
+                        
+                        if remainingrviewers == 0  % We don't have any rviewers related to this figure anymore
+                           % Find the original callback and replace it in
+                           % the figure's resize callback, and remove it
+                           % from the ORIGCALLBACKLIST array.
+                           for i=numel(ORIGCALLBACKLIST):-1:1
+                              if ORIGCALLBACKLIST(i).fighandlenumber == double(rviewerinstance.hfig)
+                                 if ~isempty(ORIGCALLBACKLIST(i).callback)
+                                    set(rviewerinstance.hfig, 'ResizeFcn', ORIGCALLBACKLIST(i).callback);
+                                    ORIGCALLBACKLIST(i) = [];
+                                 end
+                              end
+                           end
+                        end
+                        
                     otherwise
                         error('registerresizecallback:UnknownCall', 'Function ''%s'' is unknown.', action);
                         
@@ -479,21 +549,46 @@ classdef rviewer < handle
             %  time can be viewed in an axes.
             %
             persistent CBLIST;
+            persistent ORIGCALLBACKLIST;
+            % CBLIST is a cell array of registered rviewer instances
+            % ORIGCALLBACKLIST is an array of structures for callbacks
+            % the structures have elements of fighandlenumber and callback
+            
+            if isempty(ORIGCALLBACKLIST)
+               ORIGCALLBACKLIST = struct('fighandlenumber', [], 'callback', function_handle.empty);
+            end
+           
             % CBLIST is a cell array of registered rviewer instances
             if ~ischar(varargin{1})  % This is the normal callback from the figure
                 hObject = varargin{1};
+                
+                 % Get the original callback
+                for i=1:numel(ORIGCALLBACKLIST)
+                   if ORIGCALLBACKLIST(i).fighandlenumber == double(hObject)
+                      origcallback = ORIGCALLBACKLIST(i).callback;
+
+                   end
+                end
+                
                 
                 i=1;
                 while i <= numel(CBLIST)
                     rviewerinstance = CBLIST{i};
                     if (rviewerinstance.hfig == hObject) % If the figure number matches
                         delete(rviewerinstance);
-                        rviewer.RegisterDeleteCallback('Unregister', rviewerinstance); %This line is probably also called in the clear method, but it doesn't hurt to call it again.
                         i = 1;  % Because the CBLIST is being cleared an element at a time, we have to restart the count.
                     else
                         i = i+1;
                     end
                 end
+                
+                % Call the original callback if present (after all our
+                % cleanup)
+                if ~isempty(origcallback)
+                   feval(origcallback, varargin{:});
+                end
+                
+                
             else % We are registering or unregistering the callback
                 action =varargin{1};
                 rviewerinstance = varargin{2};
@@ -501,6 +596,19 @@ classdef rviewer < handle
                     case 'Register'
                         rviewer.RegisterDeleteCallback('Unregister', rviewerinstance);  %First remove any other instances of this same object                        
                         CBLIST{end+1} = rviewerinstance;  % Add this instance to the list
+                        
+                        % If the current callback for the figure isn't
+                        % empty, and it isn't a copy of this callback, then
+                        % we need to store the original callback.
+                        currentcallback = get(rviewerinstance.hfig, 'DeleteFcn');
+                        if ~isempty(currentcallback)
+                           if ~strcmpi(func2str(currentcallback), 'rviewer.RegisterDeleteCallback')
+                              origstruct.fighandlenumber = double(rviewerinstance.hfig);
+                              origstruct.callback = currentcallback;
+                              ORIGCALLBACKLIST(end+1) = origstruct;
+                           end
+                        end
+                        
                         set(rviewerinstance.hfig, 'DeleteFcn',  @rviewer.RegisterDeleteCallback); %Register this static method with the figure.
                     case 'Unregister'
                         for i=numel(CBLIST): -1 : 1
@@ -508,6 +616,35 @@ classdef rviewer < handle
                                 CBLIST(i) = [];
                             end
                         end
+                        
+                        % If that removed all the Rviewer instances related to this figure, then
+                        % replace the original callback.
+
+                        remainingrviewers = 0;
+                        for i=1:numel(CBLIST)
+                           cbinstance = CBLIST{i};
+                           if double(cbinstance.hfig) == double(rviewerinstance.hfig)
+                              remainingrviewers = remiainingrviewers+1;
+                           end
+                        end
+                        
+                        if remainingrviewers == 0  % We don't have any rviewers related to this figure anymore
+                           % Find the original callback and replace it in
+                           % the figure's delete callback, and remove it
+                           % from the ORIGCALLBACKLIST array.
+                           for i=numel(ORIGCALLBACKLIST):-1:1
+                              if ORIGCALLBACKLIST(i).fighandlenumber == double(rviewerinstance.hfig)
+                                 if ~isempty(ORIGCALLBACKLIST(i).callback)
+                                    set(rviewerinstance.hfig, 'DeleteFcn', ORIGCALLBACKLIST(i).callback);
+                                    ORIGCALLBACKLIST(i) = [];
+                                 end
+                              end
+                           end
+                        end
+
+                        
+                        
+                        
                     case 'CheckAxesInstances'
                         for i=numel(CBLIST): -1 :1 
                             if CBLIST{i}.maxes == rviewerinstance.maxes
