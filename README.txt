@@ -15,3 +15,5 @@ RVIEWSC and RVIEWERSC are image intensity scaling versions of RVIEW and RVIEWER.
 
 The cell-mode script userviewer.m provides examples of use for both RVIEW and RVIEWER.  
 
+The GUIDE generated rviewerdemo.fig and rviewerdemo.m files show how to use RVIEWER with GUIDE created UIs.
+
