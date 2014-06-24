@@ -1,7 +1,5 @@
 RVIEWER
 
-Created by Tessive LLC
-Copyright 2014
 Tony Davis
 tony@tessive.com
 
@@ -16,4 +14,22 @@ RVIEWSC and RVIEWERSC are image intensity scaling versions of RVIEW and RVIEWER.
 The cell-mode script userviewer.m provides examples of use for both RVIEW and RVIEWER.  
 
 The GUIDE generated rviewerdemo.fig and rviewerdemo.m files show how to use RVIEWER with GUIDE created UIs.
+
+
+
+
+
+Copyright 2014 Tessive LLC
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 
