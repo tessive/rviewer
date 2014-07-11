@@ -22,7 +22,7 @@ rviewer(inimage, h);
 temp = rgb2gray(inimage);
 inimage = im2double(inimage);
 temp = temp .*0.04 - 5;
-%colormap(jet(256));
+colormap(jet(256));
 h = rviewersc(temp);
 
 
@@ -42,3 +42,10 @@ temp = temp .*0.04 - 5;
 h = rviewsc(inimage, temp);
 colormap(jet(256));
 %redraw(h);
+
+%% Test creating and deleting rviewer in ways that tend to crash
+
+inimage = imread('tessivestearman.png');
+rviewer(inimage);
+image(inimage);
+rviewer(inimage);

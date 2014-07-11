@@ -129,5 +129,16 @@ h = rviewsc(inimage, rescaled);
 %  NOTE, truecolor images are not rescaled and will display normally.
 colormap(jet(256));       % Change to a 256 value colormap.
 
+%% Work with a guide created figure
+%  See the GUIDE created figure.  This demonstrates how to use RViewer in a
+%  GUIDE situation, incling the situation (which may be rare) where delete
+%  and resize callbacks are already in place for the GUIDE figure.  
+%
+%  The buttons on the figure allow the developer to load and clear an
+%  instance of RViewer, and list the state of the figure's callbacks.  Even
+%  when RViewer is intercepting those callbacks, it calls the original
+%  callback functions that were registered before it was created.  
+rviewerdemo
+
 
 
