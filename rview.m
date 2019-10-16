@@ -20,7 +20,7 @@ classdef rview < handle
     %
     %   See also:  RVIEWER
     
-    %  Copyright 2014 Tessive LLC
+    %  Copyright 2015 Tessive LLC
     %  Contact: Tony Davis, tony@tessive.com
     %  www.tessive.com
     
